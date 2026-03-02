@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /**
  * @id: PAGES_BINGO_DETAIL_V9
  * @description: 제출 후 상태 유지 UX, 로딩 비활성화, 슬라이더 제거 통합 버전

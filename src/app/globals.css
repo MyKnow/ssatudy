@@ -1,157 +1,219 @@
+/**
+ * @id: STYLE_GLOBALS_FINAL
+ * @description: TDS 기반 통합 전역 스타일 (Tailwind 의존성 최소화)
+ */
+
 @import "tailwindcss";
 
 :root {
-  --primary: #3182F6;
-  --background: #F2F4F6;
-  --surface: #FFFFFF;
-  --text-primary: #191F28;
-  --text-secondary: #8B95A1;
-  --border: #E5E8EB;
-  --borderPrimary: #3182F6;
-  --font-sans: "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Colors */
+  --primary: #3182f6;
+  --primary-dark: #1b64da;
+  --primary-light: #e8f1ff;
+  
+  /* Grayscale */
+  --background: #f2f4f6;
+  --surface: #ffffff;
+  --elevated: #f4f4f6; /* 입력창 등 미세하게 구분되는 배경 */
+  
+  --text-primary: #191f28;
+  --text-secondary: #4e5968;
+  --text-tertiary: #8b95a1;
+  --border: #e5e8eb;
+  
+  /* Status Colors */
+  --status-success: #00d082;
+  --status-error: #f04452;
+  --status-warning: #ffad13;
+
+  /* Shadows */
+  --shadow-toss: 0 8px 30px 0 rgba(0, 0, 0, 0.04);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --primary: #3182F6;
-    --background: #191F28;
-    --surface: #1F2937;
-    --text-primary: #F2F4F6;
-    --text-secondary: #8B95A1;
-    --border: #374151;
-    --borderPrimary: #3182F6;
+    --background: #191f28;
+    --surface: #202732;
+    --text-primary: #f2f4f6;
+    --text-secondary: #b0b8c1;
+    --border: #333d4b;
+    --elevated: #2c3542;
   }
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   background-color: var(--background);
   color: var(--text-primary);
-  font-family: var(--font-sans);
-  line-height: 1.6;
+  font-family: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+  letter-spacing: -0.02em;
   margin: 0;
   padding: 0;
 }
 
-a {
-  color: var(--primary);
-  text-decoration: none;
-  transition: color 0.3s ease;
+/* --- TDS Components --- */
+
+/* 1. Card */
+.card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px; /* rounded-large (1.5rem) */
+  padding: 24px;
+  box-shadow: var(--shadow-toss);
+  width: 100%;
 }
 
-a:hover,
-a:focus {
-  color: #1C62D1; /* Slightly darker shade of primary */
-  outline: none;
-}
-
-button,
-input {  
-  border: 2px solid transparent; /* 기본 2px 유지, 색상은 투명 */
-  font-family: var(--font-sans);
-  border-radius: 1rem; /* rounded-xl */
-  padding: 0.5em 1em;
-  background: var(--surface);
+/* 2. Input Field */
+input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 16px;
+  padding: 14px 16px;
+  background-color: var(--elevated);
+  border: 1px solid transparent;
+  border-radius: 14px;
   color: var(--text-primary);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.2s ease;
 }
 
-
-input:hover,
-input:focus,
-input:active{
+input:focus {
+  outline: none;
   border-color: var(--primary);
   background-color: var(--surface);
-  color: var(--text-primary);
-  outline: none;
-}
-/* 일반 버튼에만 hover 적용하지 않도록 .segment-button 등 별도 클래스 사용 */
-.segment-button:hover,
-.segment-button.selected {
-  border-color: var(--primary);
-  background-color: var(--surface);
-  color: var(--text-primary);
-  outline: none;
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
-/* CTA Button Styles */
-/* button을 무시하고 적용되도록 수정*/
+input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* 3. CTA Button */
 .cta-button {
   display: inline-flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   width: 100%;
-  padding: 0.75rem 1rem; /* px-4 py-3 */
-  border-radius: 0.75rem;
-  font-size: 1.125rem; /* text-lg */
-  font-weight: 600; /* font-semibold */
+  height: 54px;
   background-color: var(--primary);
-  color: white;
-  transition: background-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 600;
   border: none;
+  border-radius: 16px;
   cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .cta-button:hover {
-  background-color: #1C62D1; /* primary dark */
-  color: white;
+  background-color: var(--primary-dark);
 }
 
 .cta-button:active {
-  background-color: #1451a8; /* primary darker */
-  color: white;
+  transform: scale(0.96);
+  filter: brightness(0.95);
 }
 
 .cta-button:disabled {
-  opacity: 0.5;
+  background-color: var(--border);
+  color: var(--text-tertiary);
   cursor: not-allowed;
-  pointer-events: none;
+  transform: none;
 }
 
-.cta-button.loading {
-  pointer-events: none;
+/* 4. Segment Control */
+.segment-container {
+  display: flex;
+  padding: 6px;
+  gap: 6px;
+  background-color: var(--elevated);
+  border-radius: 14px;
 }
 
-/* 로그인/회원가입/재설정 텍스트 버튼 전용 */
-.text-link-button {
+.segment-item {
+  flex: 1;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
   border: none;
   background: transparent;
+}
+
+.segment-item.selected {
+  background-color: var(--surface);
   color: var(--primary);
-  text-decoration: underline;
-  font-size: 0.875rem; /* text-sm */
-  cursor: pointer;
-  padding: 0;
-  transition: color 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 0.5px solid var(--border);
 }
 
-.text-link-button:hover {
-  color: #1C62D1; /* primary dark */
-}
-
-.text-link-button:focus {
-  outline: none;
-}
-
-.icon-button-wrapper {
-  display: inline-block;
-  margin: 0.25rem; /* 버튼 간 간격 */
-}
-
+/* 5. Icon/Back Button */
 .icon-button {
-  padding: 0.5rem 1rem;
-  border-radius: 0.75rem;
-  border: 2px solid transparent;
-  background-color: var(--surface);
+  width: 54px;
+  height: 54px;
+  padding: 12px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+  border: none;
+  background: transparent;
   color: var(--text-primary);
   cursor: pointer;
-  transition: border-color 0.2s, background-color 0.2s;
-}
-
-.icon-button.selected {
-  border-color: var(--primary);
-  background-color: var(--surface);
-  color: var(--text-primary);
+  transition: background 0.2s;
 }
 
 .icon-button:hover {
-  border-color: var(--primary);
+  background-color: var(--elevated);
+}
+
+/* 6. Utility Helper */
+.label-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  margin-left: 4px;
+}
+
+/* --- globals.css 추가분 --- */
+
+.text-link-button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+/* 호버 시 배경색이 아주 살짝 올라오는 토스 스타일 */
+.text-link-button:hover {
+  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.04); /* 아주 연한 회색 */
+}
+
+/* 다크모드 대응 호버 배경 */
+@media (prefers-color-scheme: dark) {
+  .text-link-button:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+  }
 }

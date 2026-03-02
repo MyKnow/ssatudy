@@ -1,8 +1,15 @@
+/**
+ * @id: PAGES_LOGIN_V2
+ * @description: TDS 가이드라인이 적용된 로그인 페이지
+ */
+
 "use client";
 
 import { supabase } from "@/lib/supabaseClient";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import Card from "../components/card";
 import CTAButton from "../components/cta_button";
 import InputField from "../components/inputfield";
 import TextLinkButton from "../components/text_button";
@@ -13,17 +20,14 @@ export default function LoginPage() {
   const showVerifyMessage = searchParams.get("verifyEmail") === "true";
 
   const [form, setForm] = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // 초기 세션 체크를 위해 true로 시작
   const [message, setMessage] = useState(
     showVerifyMessage ? "회원가입 완료! 이메일 인증 링크를 확인해주세요." : ""
   );
 
   useEffect(() => {
     const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         router.replace("/");
       } else {
@@ -33,17 +37,11 @@ export default function LoginPage() {
 
     checkSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session) {
-          router.replace("/");
-        }
-      }
-    );
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) router.replace("/");
+    });
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    return () => authListener.subscription.unsubscribe();
   }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,72 +54,102 @@ export default function LoginPage() {
     setMessage("");
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
       });
 
-      if (error?.message === "Invalid login credentials") {
-        setMessage("아이디 또는 비밀번호를 확인해주세요.");
-      }
       if (error) {
-        setMessage("로그인 실패: " + error.message);
+        if (error.status === 400) {
+          setMessage("아이디 또는 비밀번호를 확인해주세요.");
+        } else {
+          setMessage(error.message);
+        }
       } else {
         router.replace("/");
       }
     } catch {
-      setMessage("로그인 실패: 네트워크 오류");
+      setMessage("네트워크 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center px-5 font-pretendard bg-background">
-      <div className="w-full max-w-md p-8 bg-surface rounded-xl shadow-md space-y-6">
-        <h1 className="text-3xl font-bold text-primary text-center mb-6">로그인</h1>
+    <div className="min-h-screen bg-(--background) flex flex-col items-center justify-center px-5 font-sans">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md"
+      >
+        <Card className="flex flex-col gap-10">
+          {/* Header Section */}
+          <div className="space-y-2 text-center">
+            <h1 className="text-[28px] font-bold text-(--text-primary) tracking-tight">
+              로그인
+            </h1>
+            <p className="text-[15px] text-(--text-secondary)">
+              서비스 이용을 위해 계정에 로그인하세요.
+            </p>
+          </div>
 
-        {message && (
-          <p
-            className={`text-center mb-4 font-medium ${
-              message.includes("완료") ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {message}
-          </p>
-        )}
+          {/* Alert Message Section */}
+          <AnimatePresence>
+            {message && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className={`p-4 rounded-xl text-sm font-medium text-center ${
+                  message.includes("완료") 
+                    ? "bg-(--primary-light) text-(--primary)" 
+                    : "bg-red-50 text-(--status-error)"
+                }`}
+              >
+                {message}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <InputField
-            type="email"
-            name="email"
-            placeholder="이메일"
-            value={form.email}
-            onChange={handleChange}
-            autoComplete="email"
-          />
-          <InputField
-            type="password"
-            name="password"
-            placeholder="비밀번호"
-            value={form.password}
-            onChange={handleChange}
-            autoComplete="current-password"
-          />
-          <CTAButton
-            type="submit"
-            loading={loading}
-            disabled={loading || !form.email || !form.password}
-          >
-            로그인
-          </CTAButton>
-        </form>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <InputField
+              label="이메일"
+              type="email"
+              name="email"
+              placeholder="이메일 주소 입력"
+              value={form.email}
+              onChange={handleChange}
+              autoComplete="email"
+            />
+            <InputField
+              label="비밀번호"
+              type="password"
+              name="password"
+              placeholder="비밀번호 입력"
+              value={form.password}
+              onChange={handleChange}
+              autoComplete="current-password"
+            />
+            
+            <div className="pt-4">
+              <CTAButton
+                type="submit"
+                loading={loading}
+                disabled={loading || !form.email || !form.password}
+              >
+                로그인
+              </CTAButton>
+            </div>
+          </form>
 
-        <div className="flex justify-between mt-4 text-sm text-primary">
-          <TextLinkButton text="회원가입" href="/signup" />
-          <TextLinkButton text="비밀번호 재설정" href="/reset-password" />
-        </div>
-      </div>
+          {/* Footer Links */}
+          <div className="flex justify-center items-center gap-4 pt-2">
+            <TextLinkButton text="회원가입" href="/signup" />
+            <div className="w-px h-3 bg-(--border)" />
+            <TextLinkButton text="비밀번호 재설정" href="/reset-password" />
+          </div>
+        </Card>
+      </motion.div>
     </div>
   );
 }

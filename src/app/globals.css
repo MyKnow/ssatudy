@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #3182F6;
+  --background: #F2F4F6;
+  --surface: #FFFFFF;
+  --text-primary: #191F28;
+  --text-secondary: #8B95A1;
+  --border: #E5E8EB;
+  --borderPrimary: #3182F6;
+  --font-sans: "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #3182F6;
+    --background: #191F28;
+    --surface: #1F2937;
+    --text-primary: #F2F4F6;
+    --text-secondary: #8B95A1;
+    --border: #374151;
+    --borderPrimary: #3182F6;
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover,
+a:focus {
+  color: #1C62D1; /* Slightly darker shade of primary */
+  outline: none;
+}
+
+button,
+input {  
+  border: 2px solid transparent; /* 기본 2px 유지, 색상은 투명 */
+  font-family: var(--font-sans);
+  border-radius: 1rem; /* rounded-xl */
+  padding: 0.5em 1em;
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+
+input:hover,
+input:focus,
+input:active{
+  border-color: var(--primary);
+  background-color: var(--surface);
+  color: var(--text-primary);
+  outline: none;
+}
+/* 일반 버튼에만 hover 적용하지 않도록 .segment-button 등 별도 클래스 사용 */
+.segment-button:hover,
+.segment-button.selected {
+  border-color: var(--primary);
+  background-color: var(--surface);
+  color: var(--text-primary);
+  outline: none;
+}
+
+/* CTA Button Styles */
+/* button을 무시하고 적용되도록 수정*/
+.cta-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem 1rem; /* px-4 py-3 */
+  border-radius: 0.75rem;
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 600; /* font-semibold */
+  background-color: var(--primary);
+  color: white;
+  transition: background-color 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.cta-button:hover {
+  background-color: #1C62D1; /* primary dark */
+  color: white;
+}
+
+.cta-button:active {
+  background-color: #1451a8; /* primary darker */
+  color: white;
+}
+
+.cta-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cta-button.loading {
+  pointer-events: none;
+}
+
+/* 로그인/회원가입/재설정 텍스트 버튼 전용 */
+.text-link-button {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  text-decoration: underline;
+  font-size: 0.875rem; /* text-sm */
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.text-link-button:hover {
+  color: #1C62D1; /* primary dark */
+}
+
+.text-link-button:focus {
+  outline: none;
+}
+
+.icon-button-wrapper {
+  display: inline-block;
+  margin: 0.25rem; /* 버튼 간 간격 */
+}
+
+.icon-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid transparent;
+  background-color: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.icon-button.selected {
+  border-color: var(--primary);
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+.icon-button:hover {
+  border-color: var(--primary);
+}

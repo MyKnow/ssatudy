@@ -1,46 +1,41 @@
-/**
- * @id: STYLE_GLOBALS_FINAL
- * @description: TDS 기반 통합 전역 스타일 (Tailwind 의존성 최소화)
- */
-
 @import "tailwindcss";
 
+/* --- 1. 변수 정의 (TDS Color Palette) --- */
 :root {
-  /* Colors */
+  /* 라이트 모드 */
   --primary: #3182f6;
   --primary-dark: #1b64da;
   --primary-light: #e8f1ff;
   
-  /* Grayscale */
   --background: #f2f4f6;
   --surface: #ffffff;
-  --elevated: #f4f4f6; /* 입력창 등 미세하게 구분되는 배경 */
+  --elevated: #f4f4f6;
   
   --text-primary: #191f28;
   --text-secondary: #4e5968;
   --text-tertiary: #8b95a1;
-  --border: #e5e8eb;
   
-  /* Status Colors */
-  --status-success: #00d082;
-  --status-error: #f04452;
-  --status-warning: #ffad13;
-
-  /* Shadows */
+  --border: #e5e8eb;
   --shadow-toss: 0 8px 30px 0 rgba(0, 0, 0, 0.04);
+  
+  --status-error: #f04452;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #191f28;
-    --surface: #202732;
-    --text-primary: #f2f4f6;
-    --text-secondary: #b0b8c1;
-    --border: #333d4b;
-    --elevated: #2c3542;
-  }
+.dark {
+  /* 다크 모드 */
+  --background: #191f28;
+  --surface: #202732;
+  --elevated: #2c3542;
+  
+  --text-primary: #f2f4f6;
+  --text-secondary: #b0b8c1;
+  --text-tertiary: #6b7684;
+  
+  --border: #333d4b;
+  --shadow-toss: 0 8px 30px 0 rgba(0, 0, 0, 0.2);
 }
 
+/* --- 2. 기본 베이스 스타일 --- */
 * {
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
@@ -54,21 +49,22 @@ body {
   letter-spacing: -0.02em;
   margin: 0;
   padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* --- TDS Components --- */
+/* --- 3. TDS Core Components --- */
 
-/* 1. Card */
+/* Card */
 .card {
   background-color: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 24px; /* rounded-large (1.5rem) */
+  border-radius: 24px;
   padding: 24px;
   box-shadow: var(--shadow-toss);
-  width: 100%;
+  transition: all 0.2s ease;
 }
 
-/* 2. Input Field */
+/* Input Field */
 input {
   width: 100%;
   font-family: inherit;
@@ -88,11 +84,7 @@ input:focus {
   box-shadow: 0 0 0 1px var(--primary);
 }
 
-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-/* 3. CTA Button */
+/* CTA Button */
 .cta-button {
   display: inline-flex;
   align-items: center;
@@ -115,70 +107,35 @@ input::placeholder {
 
 .cta-button:active {
   transform: scale(0.96);
-  filter: brightness(0.95);
 }
 
-.cta-button:disabled {
-  background-color: var(--border);
-  color: var(--text-tertiary);
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* 4. Segment Control */
-.segment-container {
-  display: flex;
-  padding: 6px;
-  gap: 6px;
-  background-color: var(--elevated);
-  border-radius: 14px;
-}
-
-.segment-item {
-  flex: 1;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 600;
+/* Text Link Button (Theme Toggle 등에서 사용) */
+.text-link-button {
+  background: none;
+  border: none;
   color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 12px;
   border-radius: 10px;
-  cursor: pointer;
   transition: all 0.2s ease;
-  border: none;
-  background: transparent;
-}
-
-.segment-item.selected {
-  background-color: var(--surface);
-  color: var(--primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border: 0.5px solid var(--border);
-}
-
-/* 5. Icon/Back Button */
-.icon-button {
-  width: 54px;
-  height: 54px;
-  padding: 12px;
-  margin: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 24px;
-  border: none;
-  background: transparent;
+  gap: 6px;
+}
+
+.text-link-button:hover {
   color: var(--text-primary);
-  cursor: pointer;
-  transition: background 0.2s;
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
-.icon-button:hover {
-  background-color: var(--elevated);
+/* 다크모드 전용 텍스트 버튼 호버 */
+.dark .text-link-button:hover {
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
-/* 6. Utility Helper */
+/* Utility Classes */
 .label-text {
   font-size: 13px;
   font-weight: 500;
@@ -187,33 +144,47 @@ input::placeholder {
   margin-left: 4px;
 }
 
-/* --- globals.css 추가분 --- */
+.segment-container {
+  display: flex;
+  padding: 4px; /* 내부 여백 조정 */
+  gap: 2px;
+  background-color: var(--elevated);
+  border-radius: 14px;
+  position: relative;
+  isolation: isolate; /* 내부 z-index 관리 최적화 */
+}
 
-.text-link-button {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  display: inline-flex;
+.segment-item {
+  flex: 1;
+  height: 38px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  user-select: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  border: none;
+  background: transparent;
 }
 
-/* 호버 시 배경색이 아주 살짝 올라오는 토스 스타일 */
-.text-link-button:hover {
-  color: var(--text-primary);
-  background-color: rgba(0, 0, 0, 0.04); /* 아주 연한 회색 */
+/* 💡 컴포넌트 내부의 bg-white를 무력화하고 테마 변수를 강제 적용 */
+.segment-item [layoutId$="-group"] {
+  background-color: var(--surface) !important; 
+  border-color: var(--border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
 }
 
-/* 다크모드 대응 호버 배경 */
-@media (prefers-color-scheme: dark) {
-  .text-link-button:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-  }
+/* 다크모드일 때 슬라이딩 바 배경색 조정 */
+.dark .segment-item [layoutId$="-group"] {
+  background-color: var(--surface) !important; /* 다크모드 surface로 변경 */
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 선택된 아이템 텍스트 강조 */
+.segment-item.text-primary {
+  color: var(--primary) !important;
 }

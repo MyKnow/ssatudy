@@ -1,67 +1,28 @@
-/**
- * @id: PAGES_DASHBOARD_V6_FIXED
- * @description: ESLint 에러 해결 및 Next.js Image 최적화가 적용된 실데이터 연동 버전
- * @last_modified: 2026-03-03
- */
-
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import BingoCellCard from "./components/bingo_cell_card";
 import Card from "./components/card";
 
-// --- Types & Interfaces ---
-
-interface TeamMember {
-  id: string;
-  name: string;
-  class: string;
-  student_id: string;
-  isMe?: boolean;
-}
-
-interface Submission {
-  id: string;
-  image_url: string;
-  approved: boolean;
-}
-
-interface BingoCell {
-  id: string;
-  position: number;
-  title: string;
-  type: string;
-  submission: Submission | null;
-}
-
-// Supabase Response 전용 인터페이스 (any 방지)
-interface SupabaseUserResponse {
-  team_id: string;
-  name: string;
-  teams: {
-    discord_channel_id: string | null;
-  } | null;
-}
-
-interface SupabaseBingoResponse {
-  id: string;
-  position: number;
-  title: string;
-  type: string;
-  submission: Submission[]; // Join 결과는 배열로 반환됨
-}
+// src/lib/types.ts에서 정의한 타입 사용
+import {
+  BingoCell,
+  BingoResponse,
+  User,
+  UserWithTeam,
+} from "@/lib/types";
 
 export default function Home() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [myTeamId, setMyTeamId] = useState<string | null>(null);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [userData, setUserData] = useState<UserWithTeam | null>(null);
+  const [teamMembers, setTeamMembers] = useState<(User & { isMe?: boolean })[]>([]);
   const [bingoCells, setBingoCells] = useState<BingoCell[]>([]);
-  const [discordId, setDiscordId] = useState<string | null>(null);
 
+  // 1. 로그아웃 함수 정의
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -77,58 +38,86 @@ export default function Home() {
         return;
       }
 
-      // 1. 유저 정보 및 팀 확인 (as unknown as 사용으로 안전한 타입 캐스팅)
-      const { data: userData, error: userError } = await supabase
+      // [Fetch 1] 유저 및 팀 정보 (discord_channel_id 포함)
+      const { data: userRaw, error: userError } = await supabase
         .from("users")
-        .select("team_id, name, teams(discord_channel_id)")
+        .select("*, teams(id, name, discord_channel_id)")
         .eq("id", session.user.id)
         .single();
 
-      const typedUserData = userData as unknown as SupabaseUserResponse;
-
-      if (userError || !typedUserData?.team_id) {
-        setMyTeamId(null);
+      if (userError || !userRaw?.team_id) {
+        setUserData(null);
         setLoading(false);
         return;
       }
 
-      const teamId = typedUserData.team_id;
-      setMyTeamId(teamId);
-      setDiscordId(typedUserData.teams?.discord_channel_id ?? null);
+      const typedUser = userRaw as unknown as UserWithTeam;
+      setUserData(typedUser);
 
-      // 2. 팀원 리스트 조회
       const { data: members } = await supabase
         .from("users")
-        .select("id, name, class, student_id")
-        .eq("team_id", teamId);
+        .select("*")
+        .eq("team_id", typedUser.team_id);
 
       if (members) {
-        const sortedMembers = (members as TeamMember[]).map(m => ({
+        const sortedMembers = (members as User[]).map(m => ({
           ...m,
-          isMe: m.id === session.user.id
-        })).sort((a, b) => (a.isMe ? -1 : b.isMe ? 1 : 0));
+          isMe: m.id === session.user.id // 현재 로그인한 ID와 비교
+        })).sort((a, b) => {
+          // 1. '나'를 최우선으로 (isMe가 true면 앞으로)
+          if (a.isMe) return -1;
+          if (b.isMe) return 1;
+
+          // 2. 나머지는 이름(name) 가나다순으로 정렬
+          return a.name.localeCompare(b.name, 'ko');
+        });
+
         setTeamMembers(sortedMembers);
       }
 
-      // 3. 빙고 셀 및 제출 현황 조회
-      const { data: cells } = await supabase
+      // [Fetch 3] 빙고 셀 정보 수정
+      const { data: cells, error: bingoError } = await supabase
         .from("bingo_cells")
         .select(`
-          id, position, title, type,
-          submission ( id, image_url, approved )
+          id, 
+          position, 
+          title, 
+          type, 
+          team_id, 
+          required_count,
+          submission:submissions ( 
+            id, 
+            image_url, 
+            image_url_2, 
+            approved,
+            rejection_reason
+          )
         `)
-        .eq("submission.team_id", teamId)
+        .eq("team_id", typedUser.team_id)
         .order("position", { ascending: true });
+        
+      if (bingoError) {
+        console.error("빙고 로딩 에러:", bingoError.message);
+        setLoading(false);
+        return;
+      }
 
       if (cells) {
-        const formattedCells: BingoCell[] = (cells as unknown as SupabaseBingoResponse[]).map(cell => ({
+        const formattedCells: BingoCell[] = (cells as BingoResponse[]).map(cell => ({
           id: cell.id,
           position: cell.position,
           title: cell.title,
           type: cell.type,
-          submission: cell.submission && cell.submission.length > 0 ? cell.submission[0] : null
+          team_id: cell.team_id,
+          required_count: cell.required_count,
+          // 중요: submissions는 외래키 관계상 배열로 넘어옵니다.
+          submission: cell.submission && cell.submission.length > 0 
+            ? cell.submission[0] 
+            : null
         }));
         setBingoCells(formattedCells);
+      } else {
+        console.warn("데이터는 성공했으나 결과가 비어있음 (팀 ID 확인 필요)");
       }
 
       setLoading(false);
@@ -137,19 +126,14 @@ export default function Home() {
     fetchDashboardData();
   }, [router]);
 
-  const getCellState = (cell: BingoCell) => {
-    if (!cell.submission) return { label: "미진행", style: "bg-(--background) text-(--text-tertiary) border-(--border)" };
-    if (cell.submission.approved) return { label: "승인됨", style: "bg-green-50 text-green-600 border-green-100" };
-    return { label: "검토 중", style: "bg-(--primary-light) text-(--primary) border-(--primary-light)" };
-  };
-
   if (loading) return (
     <div className="flex min-h-screen items-center justify-center bg-(--background)">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-(--primary-light) border-t-(--primary)" />
     </div>
   );
 
-  if (!myTeamId) return (
+  // 에러 해결: myTeamId 대신 userData?.team_id 사용
+  if (!userData?.team_id) return (
     <div className="flex flex-col min-h-screen items-center justify-center bg-(--background) p-10 text-center">
       <div className="mb-6 p-6 bg-white rounded-[40px] shadow-sm border border-(--border)">
         <span className="text-4xl text-black">🏝️</span>
@@ -172,9 +156,8 @@ export default function Home() {
       </header>
 
       <main className="mx-auto max-w-2xl p-5 space-y-8">
-        {/* 우리 팀 섹션 */}
         <section className="space-y-3">
-          <h2 className="px-1 text-[15px] font-bold text-(--text-secondary)">우리 팀</h2>
+          <h2 className="px-1 text-[15px] font-bold text-(--text-secondary)">우리 팀: {userData.teams?.name}</h2>
           <div className="flex gap-4">
             <Card className="flex-1 p-0! overflow-hidden shadow-sm">
               <div className="flex flex-col divide-y divide-(--border)">
@@ -194,7 +177,8 @@ export default function Home() {
 
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={() => window.open(`https://discord.com/channels/${discordId || ''}`, '_blank')}
+              // 에러 해결: discordId 대신 userData.teams?.discord_channel_id 사용
+              onClick={() => window.open(`https://discord.com/channels/${userData.teams?.discord_channel_id || ''}`, '_blank')}
               className="w-32 sm:w-40 flex flex-col items-center justify-center gap-3 rounded-[24px] bg-[#5865F2] text-white shadow-lg hover:bg-[#4752C4]"
             >
               <div className="p-3 bg-white/20 rounded-full text-white">
@@ -205,53 +189,78 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 빙고 현황 섹션 */}
         <section className="space-y-3">
           <h2 className="px-1 text-[15px] font-bold text-(--text-secondary)">우리 팀 빙고 현황</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {bingoCells.map((cell) => {
-              const { label, style } = getCellState(cell);
-              const isSubmitted = !!cell.submission;
-
-              return (
-                <motion.button
-                  key={cell.id}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => router.push(`/bingo/${cell.id}`)}
-                  className="group relative aspect-square w-full overflow-hidden rounded-[24px] border border-(--border) shadow-sm bg-white"
-                >
-                  {isSubmitted && cell.submission ? (
-                    <>
-                      <Image 
-                        src={cell.submission.image_url} 
-                        alt={cell.title}
-                        fill
-                        sizes="(max-width: 768px) 33vw, 250px"
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-black/40" />
-                      <div className="relative z-10 flex h-full flex-col justify-end p-3 text-left">
-                        <span className={`mb-1.5 self-start rounded-full px-2 py-0.5 text-[9px] font-extrabold border ${style}`}>
-                          {label}
-                        </span>
-                        <p className="text-[12px] font-bold text-white line-clamp-2 leading-tight uppercase tracking-tighter">{cell.title}</p>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center p-3 text-center">
-                      <span className="mb-2 text-[10px] font-bold text-(--text-tertiary)">#{cell.position + 1}</span>
-                      <p className="mb-2 text-[12px] font-bold text-(--text-primary) break-keep leading-snug">{cell.title}</p>
-                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold border ${style}`}>
-                        {label}
-                      </span>
-                    </div>
-                  )}
-                </motion.button>
-              );
-            })}
-          </div>
+            <div className="grid grid-cols-3 gap-3">
+              {bingoCells.map((cell) => (
+                <BingoCellCard 
+                  key={cell.id} 
+                  cell={cell} 
+                  onClick={(c) => router.push(`/bingo/${c.id}`)}
+                />
+              ))}
+            </div>
         </section>
       </main>
+
+      {/* --- Footer 추가 시작 --- */}
+      <footer className="mx-auto max-w-2xl w-full px-6 py-12 mt-10 border-t border-(--border)">
+        <div className="flex flex-col gap-6">
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <h2 className="text-sm font-black text-(--text-primary) tracking-tighter italic">SSAFY BINGO v1.0</h2>
+              <p className="text-[12px] text-(--text-tertiary) font-medium leading-relaxed">
+                본 서비스는 SSAFY 교육생들의 원활한 <br />
+                네트워킹과 몰입을 위해 제작되었습니다.
+              </p>
+            </div>
+            
+            <button 
+              onClick={() => router.push('/admin')}
+              className="p-2 bg-gray-50 rounded-xl text-(--text-tertiary) hover:text-(--text-primary) transition-colors"
+              title="관리자 페이지"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+
+          {/* 주요 링크 섹션 (Github, Mail, Bug Report) */}
+          <div className="flex flex-wrap gap-x-4 gap-y-3">
+            {/* GitHub */}
+            <a 
+              href="https://github.com/MyKnow" // 본인 깃허브 주소로 변경
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[11px] font-black text-(--text-tertiary) hover:text-(--text-primary) transition-colors uppercase tracking-widest"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+              Github
+            </a>
+
+            {/* Email */}
+            <a 
+              href="mailto:myknow00@naver.com" // 본인 이메일로 변경
+              className="flex items-center gap-1.5 text-[11px] font-black text-(--text-tertiary) hover:text-(--text-primary) transition-colors uppercase tracking-widest"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Email
+            </a>
+
+            {/* Bug Report */}
+            <a 
+              href="#" // 버그 제보 링크 (구글 폼이나 이슈 레이즈 등)
+              className="flex items-center gap-1.5 text-[11px] font-black text-(--status-error) opacity-70 hover:opacity-100 transition-opacity uppercase tracking-widest"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13l3 3m0-3l-3 3m-10-6l-3-3m3 3l-3 3M8 11a4 4 0 1 1 8 0 4 4 0 1 1-8 0m1-5v-1m6 1v-1m-7 11v1m6-1v1"/></svg>
+              Bug Report
+            </a>
+          </div>
+
+          <p className="text-[10px] font-medium text-gray-300 uppercase tracking-widest mt-2">
+            © 2026 MYKNOW. ALL RIGHTS RESERVED.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

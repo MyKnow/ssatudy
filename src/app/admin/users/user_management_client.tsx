@@ -3,6 +3,7 @@
 import { CategoryType, GenderType, Team, User } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import AdminHeader from "../admin_header";
 import { deleteUserAdmin, updateAllUsers } from "./action";
 
 interface Props {
@@ -40,7 +41,7 @@ export default function UserManagementClient({ initialUsers = [], teams = [] }: 
         alert("성공적으로 저장되었습니다.");
         router.refresh();
       } catch (err) {
-        alert("저장 중 오류가 발생했습니다.");
+        alert("저장 중 오류가 발생했습니다.: " + err);
       }
     });
   };
@@ -72,16 +73,7 @@ export default function UserManagementClient({ initialUsers = [], teams = [] }: 
         <div className="max-w-6xl mx-auto flex flex-col gap-4">
           
           {/* 상단 액션 바: 뒤로가기 & 타이틀 */}
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => router.back()}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
-              aria-label="뒤로 가기"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
-            <h1 className="text-xl font-black text-gray-900 tracking-tight italic">ADMIN / USERS</h1>
-          </div>
+          <AdminHeader title="ADMIN / USERS" />
 
           {/* 검색 바: 아이콘과 겹침 문제 해결 */}
           {/* 검색 바: 구조적으로 분리하여 절대 겹치지 않게 수정 */}

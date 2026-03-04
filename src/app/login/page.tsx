@@ -1,6 +1,6 @@
 /**
  * @id: PAGES_LOGIN_V2
- * @description: TDS 가이드라인이 적용된 로그인 페이지
+ * @description: TDS 가이드라인이 적용된 로그인 페이지 (Suspense 적용 버전)
  */
 
 "use client";
@@ -8,19 +8,20 @@
 import { supabase } from "@/lib/supabaseClient";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react"; // Suspense 추가
 import Card from "../components/card";
 import CTAButton from "../components/cta_button";
 import InputField from "../components/inputfield";
 import TextLinkButton from "../components/text_button";
 
-export default function LoginPage() {
+// 1️⃣ useSearchParams를 사용하는 실제 로직 컴포넌트
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const showVerifyMessage = searchParams.get("verifyEmail") === "true";
 
   const [form, setForm] = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(true); // 초기 세션 체크를 위해 true로 시작
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(
     showVerifyMessage ? "회원가입 완료! 이메일 인증 링크를 확인해주세요." : ""
   );
@@ -83,7 +84,6 @@ export default function LoginPage() {
         className="w-full max-w-md"
       >
         <Card className="flex flex-col gap-10">
-          {/* Header Section */}
           <div className="space-y-2 text-center">
             <h1 className="text-[28px] font-bold text-(--text-primary) tracking-tight">
               로그인
@@ -93,17 +93,16 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Alert Message Section */}
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {message && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`p-4 rounded-xl text-sm font-medium text-center ${
+                className={`p-4 rounded-xl text-sm font-medium text-center overflow-hidden ${
                   message.includes("완료") 
-                    ? "bg-(--primary-light) text-(--primary)" 
-                    : "bg-red-50 text-(--status-error)"
+                    ? "bg-blue-50 text-blue-600" // CSS 변수 대신 명시적 컬러 권장 (에러 방지)
+                    : "bg-red-50 text-red-500"
                 }`}
               >
                 {message}
@@ -142,14 +141,26 @@ export default function LoginPage() {
             </div>
           </form>
 
-          {/* Footer Links */}
           <div className="flex justify-center items-center gap-4 pt-2">
             <TextLinkButton text="회원가입" href="/signup" />
-            <div className="w-px h-3 bg-(--border)" />
+            <div className="w-px h-3 bg-gray-200" />
             <TextLinkButton text="비밀번호 재설정" href="/reset-password" />
           </div>
         </Card>
       </motion.div>
     </div>
+  );
+}
+
+// 2️⃣ 실제 페이지 컴포넌트: LoginForm을 Suspense로 감싸서 export
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
